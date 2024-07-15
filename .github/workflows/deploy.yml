@@ -1,0 +1,52 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+
+    - name: Lint with flake8
+      run: |
+        source venv/bin/activate
+        flake8 .
+
+    - name: Format with black
+      run: |
+        source venv/bin/activate
+        black --check .
+
+    - name: Test with pytest
+      run: |
+        source venv/bin/activate
+        pytest
+
+    - name: Deploy to EC2
+      if: success()
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+        KEY_PATH: ${{ secrets.KEY_PATH }}
+        EC2_PUBLIC_DNS: ${{ secrets.EC2_PUBLIC_DNS }}
+      run: |
+        scp -i $KEY_PATH -r . ec2-user@$EC2_PUBLIC_DNS:/home/ec2-user/web-scraper-api
+        ssh -i $KEY_PATH ec2-user@$EC2_PUBLIC_DNS 'cd /home/ec2-user/web-scraper-api && python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:80'
