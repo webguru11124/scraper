@@ -2,9 +2,9 @@
     "name": "django-selenium-scraper",
     "version": "1.0.0",
     "scripts": {
-        "deploy": "cd ./cdk-infra && cdk deploy --outputs-file output.json --require-approval=never --all --profile alex",
-        "ec2-setup-local": "./ec2-setup-local.sh",
-        "ec2-setup-ssm": "./ec2-setup-ssm.sh"
+        "dev": "cd ./web-scraper-api && flask run --host=0.0.0.0 --port=5000",
+        "deploy-infra": "cd ./cdk-infra && cdk deploy --outputs-file output.json --require-approval=never --all --profile alex",
+        "deploy-api": "export PEM_KEY_FILE=~/.ssh/ec2-key-pair.pem && ./deploy.sh"
     },
     "dependencies": {
         "aws-cdk": "^2.0.0"

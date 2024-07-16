@@ -1,8 +1,6 @@
 import json
 from aws_cdk import (
-    # Duration,
     Stack,
-    # aws_sqs as sqs,
     aws_ec2 as ec2,
     aws_rds as rds,
     aws_iam as iam,
@@ -21,13 +19,6 @@ class CdkInfraStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # The code that defines your stack goes here
-
-        # example resource
-        # queue = sqs.Queue(
-        #     self, "CdkInfraQueue",
-        #     visibility_timeout=Duration.seconds(300),
-        # )
         # VPC
         vpc = ec2.Vpc(self, "VPC")
 
@@ -40,35 +31,6 @@ class CdkInfraStack(Stack):
         )
         security_group.add_ingress_rule(ec2.Peer.any_ipv4(), ec2.Port.tcp(22), "Allow SSH")
         security_group.add_ingress_rule(ec2.Peer.any_ipv4(), ec2.Port.tcp(80), "Allow HTTP")
-
-
-        # Network ACL
-        network_acl = ec2.NetworkAcl(
-            self, "NetworkAcl",
-            vpc=vpc,
-            subnet_selection=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC)
-        )
-        # Inbound Rule for SSH
-        network_acl.add_entry("SSHInbound",
-            rule_number=100,
-            traffic=ec2.AclTraffic.tcp_port(22),
-            direction=ec2.TrafficDirection.INGRESS,
-            network_acl_entry_options=ec2.NetworkAclEntryOptions(
-                cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
-                rule_action=ec2.Action.ALLOW
-            )
-        )
-
-        # Outbound Rule for SSH
-        network_acl.add_entry("SSHOutbound",
-            rule_number=100,
-            traffic=ec2.AclTraffic.all_traffic(),
-            direction=ec2.TrafficDirection.EGRESS,
-            network_acl_entry_options=ec2.NetworkAclEntryOptions(
-                cidr=ec2.AclCidr.ipv4("0.0.0.0/0"),
-                rule_action=ec2.Action.ALLOW
-            )
-        )
 
         # RDS Instance
         db_instance = rds.DatabaseInstance(
@@ -90,8 +52,6 @@ class CdkInfraStack(Stack):
 
         # Create Key Pair
         key_pair_name = "ec2-key-pair"
-        # key_pair = ec2.CfnKeyPair(self, "KeyPair", key_name=key_pair_name)
-        # Use the manually created key pair
 
         # EC2 Instance
         ec2_instance = ec2.Instance(
@@ -103,14 +63,9 @@ class CdkInfraStack(Stack):
             vpc=vpc,
             security_group=security_group,
             key_name=key_pair_name,
-            vpc_subnets={
-                "subnet_type": ec2.SubnetType.PUBLIC
-            },
+            vpc_subnets={"subnet_type": ec2.SubnetType.PUBLIC},
             associate_public_ip_address=True
         )
-
-        # Wait condition to ensure the instance is fully initialized
-        # ec2_instance.instance.add_dependency(key_pair)
 
         # IAM Role for EC2 Instance
         ec2_instance.role.add_managed_policy(
@@ -120,19 +75,18 @@ class CdkInfraStack(Stack):
         # User data script to install dependencies and start the application
         ec2_instance.user_data.add_commands(
             "sudo yum update -y",
-            "sudo yum install python3 -y",
-            "pip3 install django selenium boto3",
-            "cd /home/ec2-user/web-scraper-api/scraper_project",
-            "python3 manage.py migrate",
-            "python3 manage.py runserver 0.0.0.0:80"
+            "sudo yum install -y python3 git",
+            "pip3 install flask selenium webdriver-manager psycopg2-binary requests boto3 python-dotenv",
+            "cd /home/ec2-user",
+            "git clone https://github.com/yourusername/web-scraper-api.git",
+            "cd web-scraper-api",
+            "FLASK_APP=app.py flask run --host=0.0.0.0 --port=80"
         )
 
         # Secrets Manager secret for DB credentials
         db_secret = secretsmanager.Secret(self, "DBSecret",
             generate_secret_string=secretsmanager.SecretStringGenerator(
-                secret_string_template=json.dumps({
-                    "username": "dbadmin"
-                }),
+                secret_string_template=json.dumps({"username": "dbadmin"}),
                 generate_string_key="password",
                 exclude_characters="\"@/"
             )
@@ -142,30 +96,28 @@ class CdkInfraStack(Stack):
         scraper_lambda = _lambda.Function(
             self, "ScraperLambda",
             runtime=_lambda.Runtime.PYTHON_3_8,
-            handler="lambda_function.handler",
+            handler="../lambda/lambda_function.lambda_handler",
             code=_lambda.Code.from_asset("lambda"),
             environment={
                 "DB_SECRET_ARN": db_secret.secret_arn,
                 "DB_ENDPOINT": db_instance.db_instance_endpoint_address,
                 "DB_NAME": "scraperdb",
+                "EC2_INSTANCE_DNS": ec2_instance.instance_public_dns_name,
             }
         )
 
-        # Grant Lambda permissions to read the secret
+        # Grant Lambda permissions to read the secret and connect to the database
         db_secret.grant_read(scraper_lambda)
+        db_instance.grant_connect(scraper_lambda)
 
         # CloudWatch Event Rule
         rule = events.Rule(
             self, "ScheduleRule",
-            # schedule=events.Schedule.cron(minute="0", hour="0")
             schedule=events.Schedule.rate(Duration.minutes(5))
         )
         rule.add_target(targets.LambdaFunction(scraper_lambda))
 
-        # Grant necessary permissions to the Lambda function
-        db_instance.grant_connect(scraper_lambda)
-
-         # Outputs
+        # Outputs
         CfnOutput(self, "DBEndpoint", value=db_instance.db_instance_endpoint_address, description="The endpoint of the RDS database")
         CfnOutput(self, "DBSecretARN", value=db_secret.secret_arn, description="The ARN of the Secrets Manager secret for DB credentials")
         CfnOutput(self, "EC2InstancePublicDNS", value=ec2_instance.instance_public_dns_name, description="The public DNS of the EC2 instance")

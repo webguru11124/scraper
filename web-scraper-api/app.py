@@ -1,4 +1,4 @@
-from django.http import JsonResponse
+from flask import Flask, jsonify
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
@@ -6,11 +6,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import logging
+app = Flask(__name__)
 
-# Set up logging
 logger = logging.getLogger(__name__)
 
-def scrape(request):
+@app.route('/scrape', methods=['GET'])
+def scrape():
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
@@ -20,7 +21,7 @@ def scrape(request):
         driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
     except Exception as e:
         logger.error(f"Error installing ChromeDriver: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
+        return jsonify({'error': str(e)}, status=500)
     
     try:
         driver.get('https://members.collegeofopticians.ca/Public-Register')
@@ -36,7 +37,7 @@ def scrape(request):
         except Exception as e:
             logger.error(f"Error clicking 'Find' button: {e}")
             driver.quit()
-            return JsonResponse({'error': f"Error clicking 'Find' button: {e}"}, status=500)
+            return jsonify({'error': f"Error clicking 'Find' button: {e}"}, status=500)
 
         # Wait for the table to appear
         try:
@@ -47,7 +48,7 @@ def scrape(request):
         except Exception as e:
             logger.error(f"Error waiting for table: {e}")
             driver.quit()
-            return JsonResponse({'error': f"Error waiting for table: {e}"}, status=500)
+            return jsonify({'error': f"Error waiting for table: {e}"}, status=500)
 
         # Extract data from the first page
         data = extract_table_data(driver)
@@ -71,11 +72,11 @@ def scrape(request):
                 break
         
         driver.quit()
-        return JsonResponse({'data': data})
+        return jsonify({'data': data})
     except Exception as e:
         logger.error(f"Error during scraping: {e}")
         driver.quit()
-        return JsonResponse({'error': str(e)}, status=500)
+        return jsonify({'error': str(e)}, status=500)
 
 def extract_table_data(driver):
     rows = driver.find_elements(By.CSS_SELECTOR, 'table tbody tr')
@@ -95,3 +96,7 @@ def extract_table_data(driver):
             'details_link': details_link
         })
     return page_data
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)

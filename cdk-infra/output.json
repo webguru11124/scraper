@@ -1,0 +1,8 @@
+{
+  "CdkInfraStack": {
+    "EC2InstancePublicDNS": "ec2-13-49-69-74.eu-north-1.compute.amazonaws.com",
+    "KeyPairName": "ec2-key-pair",
+    "DBSecretARN": "arn:aws:secretsmanager:eu-north-1:590183958177:secret:DBSecretD58955BC-0hwoMZ55z5tv-0UqMO1",
+    "DBEndpoint": "cdkinfrastack-rdsinstance9f6b765a-dmpqe1cdxufb.ctiga4qa6oui.eu-north-1.rds.amazonaws.com"
+  }
+}
