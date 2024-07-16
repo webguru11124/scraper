@@ -1,0 +1,12 @@
+{
+    "name": "django-selenium-scraper",
+    "version": "1.0.0",
+    "scripts": {
+        "deploy": "cd ./cdk-infra && cdk deploy --outputs-file output.json --require-approval=never --all --profile alex",
+        "ec2-setup-local": "./ec2-setup-local.sh",
+        "ec2-setup-ssm": "./ec2-setup-ssm.sh"
+    },
+    "dependencies": {
+        "aws-cdk": "^2.0.0"
+    }
+}
