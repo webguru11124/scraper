@@ -26,11 +26,12 @@ if [ -z "$INSTANCE_DNS" ]; then
     exit 1
 fi
 
+
 # Copy the Flask project to the EC2 instance
-scp -i "$PEM_KEY_FILE" -r "$PROJECT_DIR" ec2-user@"$INSTANCE_DNS":/home/ec2-user
+scp -o StrictHostKeyChecking=no -i "$PEM_KEY_FILE" -r "$PROJECT_DIR" ec2-user@"$INSTANCE_DNS":/home/ec2-user
 
 # Run setup commands on the EC2 instance
-ssh -i "$PEM_KEY_FILE" ec2-user@"$INSTANCE_DNS" << 'EOF'
+ssh -o StrictHostKeyChecking=no -i "$PEM_KEY_FILE" ec2-user@"$INSTANCE_DNS" << 'EOF'
 set -e
 
 # Navigate to the project directory
