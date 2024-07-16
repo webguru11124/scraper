@@ -44,5 +44,6 @@ jobs:
         echo "${{ secrets.PEM_KEY_FILE }}" > key.pem
         chmod 600 key.pem
         export PEM_KEY_FILE=key.pem
+        export ANSIBLE_HOST_KEY_CHECKING=False
         ./deploy.sh
         rm key.pem
