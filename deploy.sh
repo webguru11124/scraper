@@ -11,12 +11,15 @@ if [ ! -d "$PROJECT_DIR" ]; then
     exit 1
 fi
 
-# Fetch the EC2 instance public DNS from CloudFormation stack output
-INSTANCE_DNS=$(aws cloudformation describe-stacks \
-    --stack-name CdkInfraStack \
-    --query 'Stacks[0].Outputs[?OutputKey==`EC2InstancePublicDNS`].OutputValue' \
-    --output text \
-    --profile alex)
+# Fetch the EC2 instance public DNS from environment variable or CloudFormation stack output
+if [ -z "$INSTANCE_DNS" ]; then
+    echo "INSTANCE_DNS environment variable is not set. Fetching from CloudFormation stack output..."
+    INSTANCE_DNS=$(aws cloudformation describe-stacks \
+        --stack-name CdkInfraStack \
+        --query 'Stacks[0].Outputs[?OutputKey==`EC2InstancePublicDNS`].OutputValue' \
+        --output text \
+        --profile alex)
+fi
 
 if [ -z "$INSTANCE_DNS" ]; then
     echo "EC2 instance DNS not found"
@@ -24,10 +27,10 @@ if [ -z "$INSTANCE_DNS" ]; then
 fi
 
 # Copy the Flask project to the EC2 instance
-scp -i ~/.ssh/ec2-key-pair.pem -r $PROJECT_DIR ec2-user@$INSTANCE_DNS:/home/ec2-user
+scp -i "$PEM_KEY_FILE" -r "$PROJECT_DIR" ec2-user@"$INSTANCE_DNS":/home/ec2-user
 
 # Run setup commands on the EC2 instance
-ssh -i ~/.ssh/ec2-key-pair.pem ec2-user@$INSTANCE_DNS << 'EOF'
+ssh -i "$PEM_KEY_FILE" ec2-user@"$INSTANCE_DNS" << 'EOF'
 set -e
 
 # Navigate to the project directory
@@ -53,7 +56,7 @@ After=network.target
 User=ec2-user
 Group=ec2-user
 WorkingDirectory=/home/ec2-user/web-scraper-api
-Environment="PATH=/home/ec2-user/web-scraper-api/venv/bin"
+Environment=\"PATH=/home/ec2-user/web-scraper-api/venv/bin\"
 ExecStart=/home/ec2-user/web-scraper-api/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:80 app:app
 
 [Install]

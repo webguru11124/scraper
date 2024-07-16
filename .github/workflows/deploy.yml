@@ -39,6 +39,7 @@ jobs:
         PEM_KEY_FILE: ${{ secrets.PEM_KEY_FILE }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        INSTANCE_DNS: ${{ secrets.INSTANCE_DNS }}
       run: |
         echo "${{ secrets.PEM_KEY_FILE }}" > key.pem
         chmod 600 key.pem
