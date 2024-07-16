@@ -3,3 +3,4 @@ constructs>=10.0.0,<11.0.0
 aws-cdk-lib
 constructs
 boto3
+python-dotenv==1.0.1
