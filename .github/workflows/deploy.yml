@@ -22,7 +22,7 @@ jobs:
       run: |
         python -m venv venv
         source venv/bin/activate
-        pip install -r flake8 black pytest
+        pip install flake8 black pytest
 
     - name: Lint with flake8
       run: |
