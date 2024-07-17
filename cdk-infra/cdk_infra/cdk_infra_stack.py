@@ -72,14 +72,15 @@ class CdkInfraStack(Stack):
             iam.ManagedPolicy.from_aws_managed_policy_name("AmazonRDSFullAccess")
         )
 
-        # User data script to install dependencies and start the application
+        # User data script to install dependencies, clone the repo, and run the Flask app
         ec2_instance.user_data.add_commands(
             "sudo yum update -y",
             "sudo yum install -y python3 git",
             "pip3 install flask selenium webdriver-manager psycopg2-binary requests boto3 python-dotenv",
             "cd /home/ec2-user",
-            "git clone https://github.com/yourusername/web-scraper-api.git",
+            "git clone https://github.com/webguru/scraper",
             "cd web-scraper-api",
+            "psql -h {} -d scraperdb -U dbadmin -f init_db.sql".format(db_instance.db_instance_endpoint_address),
             "FLASK_APP=app.py flask run --host=0.0.0.0 --port=80"
         )
 

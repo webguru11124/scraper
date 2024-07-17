@@ -3,9 +3,14 @@ import os
 import requests
 import boto3
 import psycopg2
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def get_db_credentials():
     secret_arn = os.getenv("DB_SECRET_ARN")
@@ -23,11 +28,30 @@ def lambda_handler(event, context):
     
     url = f"http://{instance_dns}/scrape"
     
+    params = {
+        'last_name': event.get('last_name', ''),
+        'first_name_contains': event.get('first_name_contains', ''),
+        'informal_name_contains': event.get('informal_name_contains', ''),
+        'registration_number': event.get('registration_number', ''),
+        'registration_class': event.get('registration_class', ''),
+        'registration_status': event.get('registration_status', ''),
+        'area_of_service': event.get('area_of_service', ''),
+        'language_of_service': event.get('language_of_service', ''),
+        'practice_name': event.get('practice_name', ''),
+        'city_or_town': event.get('city_or_town', ''),
+        'postal_code': event.get('postal_code', '')
+    }
+
+    logger.info(f"Requesting data from {url} with parameters: {params}")
+    
     try:
-        response = requests.get(url)
+        response = requests.get(url, params=params)
         response.raise_for_status()
-        data = response.json()
+        data = response.json().get('data', [])
+        logger.info(f"Received {len(data)} records from the scrape API.")
+        
     except requests.RequestException as e:
+        logger.error(f"Error during API request: {e}")
         return {
             'statusCode': 500,
             'body': json.dumps({'error': str(e)})
@@ -41,9 +65,22 @@ def lambda_handler(event, context):
             password=db_password
         ) as connection:
             with connection.cursor() as cursor:
-                cursor.execute("INSERT INTO scraped_data (data) VALUES (%s)", (json.dumps(data),))
+                cursor.execute("TRUNCATE TABLE scraped_data")
+                logger.info("Cleared the scraped_data table.")
+                
+                for record in data:
+                    cursor.execute(
+                        """
+                        INSERT INTO scraped_data (registrant, status, class, location, details_link)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        (record['registrant'], record['status'], record['class'], record['location'], record['details_link'])
+                    )
                 connection.commit()
+                logger.info("Data inserted successfully into the database.")
+                
     except Exception as e:
+        logger.error(f"Error during database insertion: {e}")
         return {
             'statusCode': 500,
             'body': json.dumps({'error': str(e)})
