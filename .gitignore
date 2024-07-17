@@ -130,3 +130,4 @@ cdk.context.json
 **/__pycache__/
 **/*.pyc
 cdk-infra/lambda_layer/*
+cdk-infra/output.json

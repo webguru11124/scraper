@@ -4,6 +4,7 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
 import logging
@@ -47,11 +48,17 @@ def scrape():
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--remote-debugging-port=9222")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1280,800")
+    options.add_argument("--disable-software-rasterizer")
 
     try:
-        driver = webdriver.Chrome(
-            service=ChromeService(ChromeDriverManager().install()), options=options
-        )
+        # driver_path = ChromeDriverManager().install()
+        # logger.info(f"ChromeDriver path: {driver_path}")
+        # service = Service('/usr/local/bin/chromedriver')
+        # driver = webdriver.Chrome(service=service, options=options)
+        driver = webdriver.Chrome(options=options)
     except Exception as e:
         logger.error(f"Error installing ChromeDriver: {e}")
         return jsonify({"error": str(e)}), 500
@@ -59,7 +66,6 @@ def scrape():
     try:
         driver.get("https://members.collegeofopticians.ca/Public-Register")
         logger.info("Navigated to the public register page.")
-
 
         # Fill out the form fields
         try:
@@ -101,7 +107,7 @@ def scrape():
 
         # Wait for the table to appear
         try:
-            WebDriverWait(driver, 500).until(
+            WebDriverWait(driver, 2000).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "table tbody"))
             )
             logger.info("Table appeared.")
@@ -124,7 +130,7 @@ def scrape():
                     break
                 else:
                     next_button.click()
-                    WebDriverWait(driver, 500).until(
+                    WebDriverWait(driver, 2000).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "table tbody"))
                     )
                     data.extend(extract_table_data(driver))

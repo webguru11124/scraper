@@ -94,7 +94,7 @@ class CdkInfraStack(Stack):
             )
         )
         # Create Lambda Layer
-        requests_layer = _lambda.LayerVersion(
+        dependency_layer = _lambda.LayerVersion(
             self, "RequestsLayer",
             code=_lambda.Code.from_asset("lambda_layer"),
             compatible_runtimes=[_lambda.Runtime.PYTHON_3_8],
@@ -107,7 +107,7 @@ class CdkInfraStack(Stack):
             handler="lambda_function.lambda_handler",
             code=_lambda.Code.from_asset("./lambda"),
             log_retention=logs.RetentionDays.ONE_WEEK,  # Correct log retention setting
-            layers=[requests_layer],  # Add the Lambda Layer
+            layers=[dependency_layer],  # Add the Lambda Layer
             environment={
                 "DB_SECRET_ARN": db_secret.secret_arn,
                 "DB_ENDPOINT": db_instance.db_instance_endpoint_address,
@@ -123,7 +123,7 @@ class CdkInfraStack(Stack):
         # CloudWatch Event Rule
         rule = events.Rule(
             self, "ScheduleRule",
-            schedule=events.Schedule.rate(Duration.minutes(5))
+            schedule=events.Schedule.rate(Duration.hours(24))
         )
         rule.add_target(targets.LambdaFunction(scraper_lambda))
 
