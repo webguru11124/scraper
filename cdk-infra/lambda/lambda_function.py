@@ -2,11 +2,7 @@ import json
 import os
 import requests
 import boto3
-import psycopg2
 import logging
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # Configure logging
 logger = logging.getLogger()
@@ -20,14 +16,21 @@ def get_db_credentials():
     secret = json.loads(response["SecretString"])
     return secret["username"], secret["password"]
 
+def execute_sql(sql, sql_parameters):
+    client = boto3.client('rds-data')
+    response = client.execute_statement(
+        resourceArn=os.getenv('DB_CLUSTER_ARN'),
+        secretArn=os.getenv('DB_SECRET_ARN'),
+        database=os.getenv('DB_NAME'),
+        sql=sql,
+        parameters=sql_parameters
+    )
+    return response
+
 def lambda_handler(event, context):
-    db_endpoint = os.getenv("DB_ENDPOINT")
-    db_name = os.getenv("DB_NAME")
-    db_user, db_password = get_db_credentials()
     instance_dns = os.getenv("EC2_INSTANCE_DNS")
-    
     url = f"http://{instance_dns}/scrape"
-    
+
     params = {
         'last_name': event.get('last_name', ''),
         'first_name_contains': event.get('first_name_contains', ''),
@@ -43,7 +46,7 @@ def lambda_handler(event, context):
     }
 
     logger.info(f"Requesting data from {url} with parameters: {params}")
-    
+
     try:
         response = requests.get(url, params=params)
         response.raise_for_status()
@@ -58,26 +61,27 @@ def lambda_handler(event, context):
         }
 
     try:
-        with psycopg2.connect(
-            host=db_endpoint,
-            database=db_name,
-            user=db_user,
-            password=db_password
-        ) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute("TRUNCATE TABLE scraped_data")
-                logger.info("Cleared the scraped_data table.")
-                
-                for record in data:
-                    cursor.execute(
-                        """
-                        INSERT INTO scraped_data (registrant, status, class, location, details_link)
-                        VALUES (%s, %s, %s, %s, %s)
-                        """,
-                        (record['registrant'], record['status'], record['class'], record['location'], record['details_link'])
-                    )
-                connection.commit()
-                logger.info("Data inserted successfully into the database.")
+        # Clear the existing data
+        truncate_sql = "TRUNCATE TABLE scraped_data"
+        execute_sql(truncate_sql, [])
+        logger.info("Cleared the scraped_data table.")
+        
+        # Insert new data
+        insert_sql = """
+        INSERT INTO scraped_data (registrant, status, class, location, details_link)
+        VALUES (:registrant, :status, :class, :location, :details_link)
+        """
+        for record in data:
+            sql_parameters = [
+                {'name': 'registrant', 'value': {'stringValue': record['registrant']}},
+                {'name': 'status', 'value': {'stringValue': record['status']}},
+                {'name': 'class', 'value': {'stringValue': record['class']}},
+                {'name': 'location', 'value': {'stringValue': record['location']}},
+                {'name': 'details_link', 'value': {'stringValue': record['details_link']}}
+            ]
+            execute_sql(insert_sql, sql_parameters)
+        
+        logger.info("Data inserted successfully into the database.")
                 
     except Exception as e:
         logger.error(f"Error during database insertion: {e}")

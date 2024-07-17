@@ -7,6 +7,9 @@ from cdk_infra.cdk_infra_stack import CdkInfraStack
 
 
 app = cdk.App()
+
+# TODO: Need to pass the environment variables to the stack
+
 CdkInfraStack(app, "CdkInfraStack",
     # If you don't specify 'env', this stack will be environment-agnostic.
     # Account/Region-dependent features and context lookups will not work,

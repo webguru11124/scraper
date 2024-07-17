@@ -8,6 +8,7 @@ from aws_cdk import (
     aws_secretsmanager as secretsmanager,
     aws_events as events,
     aws_events_targets as targets,
+    aws_logs as logs,  # Import aws_logs for log retention
     Duration,
     RemovalPolicy,
     CfnOutput
@@ -92,13 +93,21 @@ class CdkInfraStack(Stack):
                 exclude_characters="\"@/"
             )
         )
-
+        # Create Lambda Layer
+        requests_layer = _lambda.LayerVersion(
+            self, "RequestsLayer",
+            code=_lambda.Code.from_asset("lambda_layer"),
+            compatible_runtimes=[_lambda.Runtime.PYTHON_3_8],
+            description="A layer to include requests library",
+        )
         # Lambda function for scraping
         scraper_lambda = _lambda.Function(
             self, "ScraperLambda",
             runtime=_lambda.Runtime.PYTHON_3_8,
-            handler="../lambda/lambda_function.lambda_handler",
-            code=_lambda.Code.from_asset("lambda"),
+            handler="lambda_function.lambda_handler",
+            code=_lambda.Code.from_asset("./lambda"),
+            log_retention=logs.RetentionDays.ONE_WEEK,  # Correct log retention setting
+            layers=[requests_layer],  # Add the Lambda Layer
             environment={
                 "DB_SECRET_ARN": db_secret.secret_arn,
                 "DB_ENDPOINT": db_instance.db_instance_endpoint_address,

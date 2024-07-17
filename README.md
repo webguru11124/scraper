@@ -1,122 +1,133 @@
+### README.md
 
-# Django Selenium Scraper
+## django-selenium-scraper
 
-This project is a web scraping application built with Django, Selenium, and AWS. It scrapes data from a specified website and stores it in a PostgreSQL database hosted on AWS RDS. The application is deployed on an AWS EC2 instance, and the scraping tasks are scheduled using AWS Lambda and CloudWatch Events. The infrastructure is managed using AWS CDK.
+This project is designed to scrape data from a specified website using Selenium and store the data in a PostgreSQL database. It uses AWS services such as EC2, RDS, Lambda, and Secrets Manager for infrastructure, and it leverages Flask for the web application.
 
-## Project Structure
+### Project Structure
 
 ```
 django-selenium-scraper/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml
 ├── cdk-infra/
-│   ├── lambda/
-│   │   └── lambda_function.py
+│   ├── app.py
 │   ├── cdk_infra/
 │   │   ├── __init__.py
 │   │   └── cdk_infra_stack.py
+│   └── requirements.txt
+├── lambda/
+│   ├── lambda_function.py
+├── web-scraper-api/
 │   ├── app.py
-│   ├── cdk.json
+│   ├── init_db.sql
 │   ├── requirements.txt
-│   └── README.md
-├── scraper_project/
-│   ├── scraper/
-│   │   ├── __init__.py
-│   │   ├── admin.py
-│   │   ├── apps.py
-│   │   ├── migrations/
-│   │   ├── models.py
-│   │   ├── tests/
-│   │   │   └── test_views.py
-│   │   ├── views.py
-│   ├── scraper_project/
-│   │   ├── __init__.py
-│   │   ├── asgi.py
-│   │   ├── settings.py
-│   │   ├── urls.py
-│   │   └── wsgi.py
-│   ├── manage.py
-├── .flake8
 ├── .gitignore
-├── pytest.ini
-├── requirements.txt
+├── deploy.sh
+├── package.json
 └── README.md
 ```
 
-## Getting Started
+### Setup Instructions
 
-### Prerequisites
+#### Prerequisites
 
-- AWS CLI
-- AWS CDK
-- Python 3.8
+- Python 3.x
+- AWS CLI configured with appropriate permissions
+- Node.js and npm (for AWS CDK)
+- Docker (for containerizing the application)
 
-### Setting Up the Django Project
+#### Installation
 
-1. Create and activate a virtual environment:
+1. **Clone the repository**
 
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
+```sh
+git clone https://github.com/yourusername/django-selenium-scraper.git
+cd django-selenium-scraper
+```
 
-2. Install dependencies:
+2. **Install dependencies**
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+```sh
+npm install
+python3 -m venv venv
+source venv/bin/activate
+pip install -r web-scraper-api/requirements.txt
+pip install -r cdk-infra/requirements.txt
+```
 
-3. Run the Django development server:
+3. **Deploy the infrastructure**
 
-    ```bash
-    python manage.py runserver
-    ```
+```sh
+npm run deploy-infra
+```
 
-### Running Lint, Format, and Tests
+4. **Deploy the web scraper API**
 
-1. Lint the code with `flake8`:
+```sh
+npm run deploy-api
+```
 
-    ```bash
-    flake8 .
-    ```
+5. **Local Development**
 
-2. Format the code with `black`:
+```sh
+npm run dev
+```
 
-    ```bash
-    black .
-    ```
+### Usage
 
-3. Run tests with `pytest`:
+After deploying, you can access the Flask API on the EC2 instance's public DNS. The `/scrape` endpoint will trigger the web scraping and store the data in the RDS database.
 
-    ```bash
-    pytest
-    ```
+### Further Improvements
 
-### Deploying to AWS with CDK
+1. **Use Django**:
+   - Refactor the project to use Django instead of Flask for the web application.
+   - Implement database interactions directly in the Django application, removing the need for a Lambda function.
 
-1. Install the required CDK dependencies:
+2. **Pass Environment Variables to Django**:
+   - Ensure all necessary environment variables are securely passed to the Django application using AWS Secrets Manager or Parameter Store.
 
-    ```bash
-    pip install
+3. **Automate Infrastructure Deployment**:
+   - Create a separate CI/CD pipeline for deploying infrastructure changes automatically using GitHub Actions.
 
- -r cdk-infra/requirements.txt
-    ```
+4. **Containerize the Application**:
+   - Create a Dockerfile for the Django or Flask application.
+   - Build and push the Docker image to Amazon ECR.
+   - Deploy the application using ECS or another container orchestration service.
 
-2. Bootstrap and deploy the CDK stack:
+5. **Extensive Testing**:
+   - Add more comprehensive tests for both the web scraper and the web application.
+   - Implement unit tests, integration tests, and end-to-end tests.
 
-    ```bash
-    cd cdk-infra
-    cdk bootstrap
-    cdk deploy
-    ```
+### Example Dockerfile for Django Application
 
-### Setting Up CI/CD with GitHub Actions
+```Dockerfile
+# Use the official Python image from the Docker Hub
+FROM python:3.9-slim
 
-Create a `.github/workflows/deploy.yml` file with the following content to set up CI/CD:
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Set work directory
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt /app/
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
+
+# Copy project
+COPY . /app/
+
+# Run server
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "django_selenium_scraper.wsgi:application"]
+```
+
+### CI/CD for Infrastructure
+
+Create a new GitHub Actions workflow file `.github/workflows/deploy-infra.yml`:
 
 ```yaml
-name: CI/CD Pipeline
+name: Deploy Infrastructure
 
 on:
   push:
@@ -124,54 +135,30 @@ on:
       - main
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
       with:
-        python-version: '3.x'
+        node-version: '14'
 
     - name: Install dependencies
-      run: |
-        python -m venv venv
-        source venv/bin/activate
-        pip install -r requirements.txt
+      run: npm install
 
-    - name: Lint with flake8
-      run: |
-        source venv/bin/activate
-        flake8 .
-
-    - name: Format with black
-      run: |
-        source venv/bin/activate
-        black --check .
-
-    - name: Test with pytest
-      run: |
-        source venv/bin/activate
-        pytest
-
-    - name: Deploy to EC2
-      if: success()
+    - name: Deploy CDK Stack
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
-        KEY_PATH: ${{ secrets.KEY_PATH }}
-        EC2_PUBLIC_DNS: ${{ secrets.EC2_PUBLIC_DNS }}
       run: |
-        scp -i $KEY_PATH -r . ec2-user@$EC2_PUBLIC_DNS:/home/ec2-user/web-scraper-api
-        ssh -i $KEY_PATH ec2-user@$EC2_PUBLIC_DNS 'cd /home/ec2-user/web-scraper-api && python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:80'
+        cd cdk-infra
+        npx cdk deploy --outputs-file output.json --require-approval=never --all
 ```
 
-## License
+### Conclusion
 
-This project is licensed under the MIT License.
-
-By following these steps and including the provided configuration files, you will have a Django and Selenium project with linting, formatting, and testing integrated, as well as a CI/CD pipeline set up to ensure code quality and smooth deployments.
+By following these steps and suggestions, you can enhance the functionality, maintainability, and scalability of your project. If you have any questions or need further assistance, feel free to reach out.

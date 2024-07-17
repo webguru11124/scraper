@@ -129,3 +129,4 @@ cdk.context.json
 # Lint and formatter cache
 **/__pycache__/
 **/*.pyc
+cdk-infra/lambda_layer/*
