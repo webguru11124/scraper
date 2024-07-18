@@ -22,7 +22,7 @@ jobs:
       run: |
         python -m venv venv
         source venv/bin/activate
-        pip install black pytest
+        pip install black pytest pytest-mock
 
     - name: Format with black
       run: |

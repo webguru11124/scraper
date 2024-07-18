@@ -109,7 +109,6 @@ class CdkInfraStack(Stack):
             code=_lambda.Code.from_asset("./lambda"),
             log_retention=logs.RetentionDays.ONE_WEEK,  # Correct log retention setting
             layers=[dependency_layer],  # Add the Lambda Layer
-            vpc=vpc,  # Place Lambda function in the VPC
             environment={
                 "DB_SECRET_ARN": db_secret.secret_arn,
                 "DB_ENDPOINT": db_instance.db_instance_endpoint_address,
@@ -117,15 +116,10 @@ class CdkInfraStack(Stack):
                 "DB_NAME": "scraperdb",
                 "EC2_INSTANCE_DNS": ec2_instance.instance_public_dns_name,
             },
+            vpc=vpc,  # Place Lambda function in the VPC
             timeout=Duration.seconds(900)  # Set timeout to 15 minutes (900 seconds)
         )
 
-         # Add VPC endpoint for RDS Data API
-        vpc_endpoint = ec2.InterfaceVpcEndpoint(
-            self, "RDSDataAPIEndpoint",
-            vpc=vpc,
-            service=ec2.InterfaceVpcEndpointAwsService.RDS_DATA
-        )
         # Grant Lambda permissions to read the secret and connect to the database
         db_secret.grant_read(scraper_lambda)
         db_instance.grant_connect(scraper_lambda)
