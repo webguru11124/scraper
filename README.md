@@ -1,6 +1,4 @@
-### README.md
-
-## django-selenium-scraper
+## Flask-selenium-scraper
 
 This project is designed to scrape data from a specified website using Selenium and store the data in a PostgreSQL database. It uses AWS services such as EC2, RDS, Lambda, and Secrets Manager for infrastructure, and it leverages Flask for the web application.
 
@@ -33,15 +31,14 @@ django-selenium-scraper/
 - Python 3.x
 - AWS CLI configured with appropriate permissions
 - Node.js and npm (for AWS CDK)
-- Docker (for containerizing the application)
 
 #### Installation
 
 1. **Clone the repository**
 
 ```sh
-git clone https://github.com/yourusername/django-selenium-scraper.git
-cd django-selenium-scraper
+git clone https://github.com/webguru11124/scraper.git
+cd scraper
 ```
 
 2. **Install dependencies**
@@ -74,6 +71,45 @@ npm run dev
 
 ### Usage
 
+deployed url
+
+curl http://ec2-13-60-71-122.eu-north-1.compute.amazonaws.com/scrape?last_name=Donna or
+curl http://ec2-13-60-71-122.eu-north-1.compute.amazonaws.com/scrape
+
+### Challenge
+
+**Scraping the College of Opticians Website**:
+
+- **Task**: Scrape paginated data from the College of Opticians website (https://members.collegeofopticians.ca/Public-Register).
+- **Steps**:
+  1. **Navigate to the Website**: Use Selenium to open the public register page.
+  2. **Handle Pagination**:
+     - Locate the "Next Page" button using a CSS selector.
+     - Click the "Next Page" button to load the next set of data.
+     - Determine if it is the last page by checking the "onclick" value or the button's disabled state.
+  3. **Extract Data**: Extract the necessary data from each page and store it in a PostgreSQL database.
+  4. **Set Search Queries**: Allow search queries to be passed from the API request event to Selenium for dynamic data extraction.
+
+**Deployment Configuration**:
+
+- **Infrastructure Setup**: Configure the CDK stack for deployment, including setting up EC2, RDS, and other required AWS resources.
+- **Server Configuration**:
+  - **SSH Key Management**: Ensure proper SSH key management for secure access to the EC2 instance.
+  - **Gunicorn and Nginx**: Install and configure Gunicorn and Nginx to deploy the Flask application.
+  - **Troubleshooting**:
+    - **502 Bad Gateway Error**: Resolve issues in the Nginx configuration file that cause 502 errors.
+    - **500 Internal Server Error**: Address frequent 500 errors by increasing the Gunicorn timeout setting from 30 seconds to a more appropriate value for long-running requests (e.g., 1200 seconds).
+
+**CI/CD Configuration**:
+
+- **Automated Deployment**:
+  - Create a CI/CD pipeline using GitHub Actions to automate the deployment process.
+  - Store and use environment variables and secrets securely using AWS Secrets Manager or Parameter Store.
+- **Logging and Monitoring**: Implement comprehensive logging to diagnose and fix issues promptly.
+- **Error Handling**: Ensure robust error handling in the Flask application to provide informative error messages and improve debugging.
+
+### Usage
+
 After deploying, you can access the Flask API on the EC2 instance's public DNS. The `/scrape` endpoint will trigger the web scraping and store the data in the RDS database.
 
 ### Further Improvements
@@ -83,7 +119,7 @@ After deploying, you can access the Flask API on the EC2 instance's public DNS. 
    - Implement database interactions directly in the Django application, removing the need for a Lambda function.
 
 2. **Pass Environment Variables to Django**:
-   - Ensure all necessary environment variables are securely passed to the Django application using AWS Secrets Manager or Parameter Store.
+   - Ensure all necessary environment variables like database env are securely passed to the Django application using AWS Secrets Manager or Parameter Store.
 
 3. **Automate Infrastructure Deployment**:
    - Create a separate CI/CD pipeline for deploying infrastructure changes automatically using GitHub Actions.

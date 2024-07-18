@@ -17,18 +17,58 @@ def get_db_credentials():
     return secret["username"], secret["password"]
 
 def execute_sql(sql, sql_parameters):
+    resource_arn = os.getenv('DB_CLUSTER_ARN')
+    secret_arn = os.getenv('DB_SECRET_ARN')
+    database = os.getenv('DB_NAME')
+    
+    if not resource_arn or not secret_arn or not database:
+        logger.error("One or more required environment variables are missing.")
+        logger.error(f"DB_CLUSTER_ARN: {resource_arn}")
+        logger.error(f"DB_SECRET_ARN: {secret_arn}")
+        logger.error(f"DB_NAME: {database}")
+        raise ValueError("Required environment variables are not set.")
+
     client = boto3.client('rds-data')
     response = client.execute_statement(
-        resourceArn=os.getenv('DB_CLUSTER_ARN'),
-        secretArn=os.getenv('DB_SECRET_ARN'),
-        database=os.getenv('DB_NAME'),
+        resourceArn=resource_arn,
+        secretArn=secret_arn,
+        database=database,
         sql=sql,
         parameters=sql_parameters
     )
     return response
 
+def table_exists(table_name):
+    check_table_sql = f"""
+    SELECT COUNT(*)
+    FROM information_schema.tables 
+    WHERE table_name = '{table_name}'
+    """
+    response = execute_sql(check_table_sql, [])
+    return response['records'][0][0]['longValue'] > 0
+
+def create_table():
+    create_table_sql = """
+    CREATE TABLE IF NOT EXISTS scraped_data (
+        registrant VARCHAR(255),
+        status VARCHAR(255),
+        class VARCHAR(255),
+        location VARCHAR(255),
+        details_link VARCHAR(255)
+    )
+    """
+    execute_sql(create_table_sql, [])
+    logger.info("scraped_data table created successfully.")
+
 def lambda_handler(event, context):
     instance_dns = os.getenv("EC2_INSTANCE_DNS")
+    if not instance_dns:
+        logger.error("EC2_INSTANCE_DNS environment variable is not set.")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': 'EC2_INSTANCE_DNS environment variable is not set.'})
+        }
+
     url = f"http://{instance_dns}/scrape"
 
     params = {
@@ -61,6 +101,10 @@ def lambda_handler(event, context):
         }
 
     try:
+        # Check if the table exists, create it if it does not
+        if not table_exists('scraped_data'):
+            create_table()
+        
         # Clear the existing data
         truncate_sql = "TRUNCATE TABLE scraped_data"
         execute_sql(truncate_sql, [])

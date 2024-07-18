@@ -4,10 +4,10 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
 import logging
+import time
 
 app = Flask(__name__)
 
@@ -31,58 +31,58 @@ logger.addHandler(file_handler)
 
 @app.route("/scrape", methods=["GET"])
 def scrape():
-    last_name = request.args.get('last_name', '')
-    first_name_contains = request.args.get('first_name_contains', '')
-    informal_name_contains = request.args.get('informal_name_contains', '')
-    registration_number = request.args.get('registration_number', '')
-    registration_class = request.args.get('registration_class', '')
-    registration_status = request.args.get('registration_status', '')
-    contact_lens_mentor = request.args.get('contact_lens_mentor', '')
-    area_of_service = request.args.get('area_of_service', '')
-    language_of_service = request.args.get('language_of_service', '')
-    practice_name = request.args.get('practice_name', '')
-    city_or_town = request.args.get('city_or_town', '')
-    postal_code = request.args.get('postal_code', '')
-
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--remote-debugging-port=9222")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1280,800")
-    options.add_argument("--disable-software-rasterizer")
-
     try:
+        # existing code
+        logger.info("Starting the scraping process.")
+        
+        # Set up the driver
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--remote-debugging-port=9222")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1280,800")
+        options.add_argument("--disable-software-rasterizer")
+
+        try:
         # driver_path = ChromeDriverManager().install()
         # logger.info(f"ChromeDriver path: {driver_path}")
         # service = Service('/usr/local/bin/chromedriver')
         # driver = webdriver.Chrome(service=service, options=options)
-        driver = webdriver.Chrome(options=options)
-    except Exception as e:
-        logger.error(f"Error installing ChromeDriver: {e}")
-        return jsonify({"error": str(e)}), 500
+            driver = webdriver.Chrome(options=options)
+        except Exception as e:
+            logger.error(f"Error installing ChromeDriver: {e}")
+            return jsonify({"error": str(e)}), 500
 
-    try:
-        driver.get("https://members.collegeofopticians.ca/Public-Register")
-        logger.info("Navigated to the public register page.")
-
-        # Fill out the form fields
+        
         try:
+            driver.get("https://members.collegeofopticians.ca/Public-Register")
+            logger.info("Navigated to the public register page.")
+            
+            last_name = request.args.get('last_name', '')
+            first_name_contains = request.args.get('first_name_contains', '')
+            informal_name_contains = request.args.get('informal_name_contains', '')
+            registration_number = request.args.get('registration_number', '')
+            registration_class = request.args.get('registration_class', '')
+            registration_status = request.args.get('registration_status', '')
+            contact_lens_mentor = request.args.get('contact_lens_mentor', '')
+            area_of_service = request.args.get('area_of_service', '')
+            language_of_service = request.args.get('language_of_service', '')
+            practice_name = request.args.get('practice_name', '')
+            city_or_town = request.args.get('city_or_town', '')
+            postal_code = request.args.get('postal_code', '')
+            
+            # Fill out the form fields
             driver.find_element(By.ID, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input0_TextBox1').send_keys(last_name)
             driver.find_element(By.ID, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input1_TextBox1').send_keys(first_name_contains)
             driver.find_element(By.ID, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input2_TextBox1').send_keys(informal_name_contains)
             driver.find_element(By.ID, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input3_TextBox1').send_keys(registration_number)
 
-            # TODO: check if value is in correct options format.
-
-            set_dropdown_value(driver, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input4_DropDown1',registration_class)
-            set_dropdown_value(driver, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input5_DropDown1',registration_status)
-            set_dropdown_value(driver, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input6_DropDown1',contact_lens_mentor)
-            set_dropdown_value(driver, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input7_DropDown1',area_of_service)
-
-            # TODO: check if this is working for searchable dropdown since it is not in the select2 format.
-            # set_dropdown_value(driver, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input5_DropDown1',registration_status)select2-tags-container')).select_by_visible_text(language_of_service)
+            set_dropdown_value(driver, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input4_DropDown1', registration_class)
+            set_dropdown_value(driver, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input5_DropDown1', registration_status)
+            set_dropdown_value(driver, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input6_DropDown1', contact_lens_mentor)
+            set_dropdown_value(driver, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input7_DropDown1', area_of_service)
 
             driver.find_element(By.ID, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input9_TextBox1').send_keys(practice_name)
             driver.find_element(By.ID, 'ctl01_TemplateBody_WebPartManager1_gwpciNewQueryMenuCommon_ciNewQueryMenuCommon_ResultsGrid_Sheet0_Input10_TextBox1').send_keys(city_or_town)
@@ -95,7 +95,7 @@ def scrape():
 
         # Click the "Find" button
         try:
-            find_button = WebDriverWait(driver, 100).until(
+            find_button = WebDriverWait(driver, 60).until(
                 EC.element_to_be_clickable((By.XPATH, '//input[@value="Find"]'))
             )
             find_button.click()
@@ -117,30 +117,49 @@ def scrape():
             return jsonify({"error": f"Error waiting for table: {e}"}), 500
 
         # Extract data from the first page
-        data = extract_table_data(driver)
-
-         # Check for pagination and navigate if necessary
-        while True:
-            try: 
-                next_button = WebDriverWait(driver, 100).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, "input[title='Next Page']"))
-                )
-                if not next_button.is_enabled() or next_button.get_attribute("onclick") == "return false;":
-                    logger.info("No more pages to navigate.")
-                    break
-                else:
-                    next_button.click()
-                    WebDriverWait(driver, 2000).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "table tbody"))
+        try:
+            data = extract_table_data(driver)
+            logger.info(f"Extracted {len(data)} records from the first page.")
+        except Exception as e:
+            logger.error(f"Error extracting table data: {e}")
+            driver.quit()
+            return jsonify({"error": f"Error extracting table data: {e}"}), 500
+        
+        # Check for pagination and navigate if necessary
+        try:
+            while True:
+                try:
+                    logger.info("Checking for 'Next Page' button.")
+                    next_button = WebDriverWait(driver, 60).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "input[title='Next Page']"))
                     )
-                    data.extend(extract_table_data(driver))
-                    logger.info("Navigated to next page.")
-            except StaleElementReferenceException:
-                logger.info("Stale element reference exception occurred, retrying.")
-                continue
-            except Exception as e:
-                logger.info(f"No more pages to navigate or error occurred: {e}")
-                break
+                    logger.info("Found 'Next Page' button.")
+                    retries = 3
+                    while retries > 0:
+                        try:
+                            next_button.click()
+                            logger.info("Clicked 'Next Page' button.")
+                            WebDriverWait(driver, 2000).until(
+                                EC.presence_of_element_located((By.CSS_SELECTOR, "table tbody"))
+                            )
+                            logger.info("Next page appeared.")
+                            data.extend(extract_table_data(driver))
+                            logger.info("Extracted data from next page, Navigating to next page.") 
+                            break
+                        except StaleElementReferenceException:
+                            retries -= 1
+                            time.sleep(1)
+                        except Exception as e:
+                            logger.error(f"Error during pagination: {e}")
+                            break
+                    else:
+                        logger.info("No more pages to navigate or retries exhausted.")
+                        break
+                except Exception as e:
+                    logger.info(f"No more pages to navigate or error occurred: {e}")
+                    break
+        except Exception as e:
+            logger.error(f"Error during pagination: {e}")
 
         driver.quit()
         logger.info(f"Scraping completed. Found {len(data)} records.")

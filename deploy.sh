@@ -118,7 +118,7 @@ User=ec2-user
 Group=nginx
 WorkingDirectory=/home/ec2-user/web-scraper-api
 Environment="PATH=/home/ec2-user/web-scraper-api/venv/bin"
-ExecStart=/home/ec2-user/web-scraper-api/venv/bin/gunicorn --workers 3 --bind unix:/home/ec2-user/web-scraper-api/web-scraper.sock -m 007 --log-file /home/ec2-user/web-scraper-api/gunicorn.log --log-level debug app:app
+ExecStart=/home/ec2-user/web-scraper-api/venv/bin/gunicorn --workers 3 --bind unix:/home/ec2-user/web-scraper-api/web-scraper.sock -m 007 --log-file /home/ec2-user/web-scraper-api/gunicorn.log --log-level debug --timeout 3600 app:app
 
 [Install]
 WantedBy=multi-user.target
